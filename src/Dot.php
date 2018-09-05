@@ -6,6 +6,7 @@
  * @link    https://github.com/adbario/php-dot-notation
  * @license https://github.com/adbario/php-dot-notation/blob/2.x/LICENSE.md (MIT License)
  */
+
 namespace Adbar;
 
 use Countable;
@@ -28,15 +29,18 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
      * @var array
      */
     protected $items = [];
+    protected $delimiter;
 
     /**
      * Create a new Dot instance
      *
      * @param mixed $items
+     * @param string $delimiter
      */
-    public function __construct($items = [])
+    public function __construct($items = [], $delimiter = '.')
     {
         $this->items = $this->getArrayItems($items);
+        $this->delimiter = $delimiter;
     }
 
     /**
@@ -44,7 +48,7 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
      * if the key doesn't exist already
      *
      * @param array|int|string $keys
-     * @param mixed            $value
+     * @param mixed $value
      */
     public function add($keys, $value = null)
     {
@@ -80,7 +84,7 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
             return;
         }
 
-        $keys = (array) $keys;
+        $keys = (array)$keys;
 
         foreach ($keys as $key) {
             $this->set($key, []);
@@ -94,7 +98,7 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
      */
     public function delete($keys)
     {
-        $keys = (array) $keys;
+        $keys = (array)$keys;
 
         foreach ($keys as $key) {
             if ($this->exists($this->items, $key)) {
@@ -104,7 +108,7 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
             }
 
             $items = &$this->items;
-            $segments = explode('.', $key);
+            $segments = explode($this->delimiter, $key);
             $lastSegment = array_pop($segments);
 
             foreach ($segments as $segment) {
@@ -122,8 +126,8 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
     /**
      * Checks if the given key exists in the provided array.
      *
-     * @param  array      $array Array to validate
-     * @param  int|string $key   The key to look for
+     * @param  array $array Array to validate
+     * @param  int|string $key The key to look for
      *
      * @return bool
      */
@@ -135,9 +139,9 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
     /**
      * Flatten an array with the given character as a key delimiter
      *
-     * @param  string     $delimiter
+     * @param  string $delimiter
      * @param  array|null $items
-     * @param  string     $prepend
+     * @param  string $prepend
      * @return array
      */
     public function flatten($delimiter = '.', $items = null, $prepend = '')
@@ -152,10 +156,10 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
             if (is_array($value) && !empty($value)) {
                 $flatten = array_merge(
                     $flatten,
-                    $this->flatten($delimiter, $value, $prepend.$key.$delimiter)
+                    $this->flatten($delimiter, $value, $prepend . $key . $delimiter)
                 );
             } else {
-                $flatten[$prepend.$key] = $value;
+                $flatten[$prepend . $key] = $value;
             }
         }
 
@@ -166,7 +170,7 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
      * Return the value of a given key
      *
      * @param  int|string|null $key
-     * @param  mixed           $default
+     * @param  mixed $default
      * @return mixed
      */
     public function get($key = null, $default = null)
@@ -179,13 +183,13 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
             return $this->items[$key];
         }
 
-        if (strpos($key, '.') === false) {
+        if (strpos($key, $this->delimiter) === false) {
             return $default;
         }
 
         $items = $this->items;
 
-        foreach (explode('.', $key) as $segment) {
+        foreach (explode($this->delimiter, $key) as $segment) {
             if (!is_array($items) || !$this->exists($items, $segment)) {
                 return $default;
             }
@@ -210,7 +214,7 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
             return $items->all();
         }
 
-        return (array) $items;
+        return (array)$items;
     }
 
     /**
@@ -221,7 +225,7 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
      */
     public function has($keys)
     {
-        $keys = (array) $keys;
+        $keys = (array)$keys;
 
         if (!$this->items || $keys === []) {
             return false;
@@ -234,7 +238,7 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
                 continue;
             }
 
-            foreach (explode('.', $key) as $segment) {
+            foreach (explode($this->delimiter, $key) as $segment) {
                 if (!is_array($items) || !$this->exists($items, $segment)) {
                     return false;
                 }
@@ -258,7 +262,7 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
             return empty($this->items);
         }
 
-        $keys = (array) $keys;
+        $keys = (array)$keys;
 
         foreach ($keys as $key) {
             if (!empty($this->get($key))) {
@@ -274,14 +278,14 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
      * or with the whole Dot object
      *
      * @param array|string|self $key
-     * @param array             $value
+     * @param array $value
      */
     public function merge($key, $value = null)
     {
         if (is_array($key)) {
             $this->items = array_merge($this->items, $key);
         } elseif (is_string($key)) {
-            $items = (array) $this->get($key);
+            $items = (array)$this->get($key);
             $value = array_merge($items, $this->getArrayItems($value));
 
             $this->set($key, $value);
@@ -295,7 +299,7 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
      * delete the key
      *
      * @param  int|string|null $key
-     * @param  mixed           $default
+     * @param  mixed $default
      * @return mixed
      */
     public function pull($key = null, $default = null)
@@ -340,7 +344,7 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
      * Set a given key / value pair or pairs
      *
      * @param array|int|string $keys
-     * @param mixed            $value
+     * @param mixed $value
      */
     public function set($keys, $value = null)
     {
@@ -354,7 +358,7 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
 
         $items = &$this->items;
 
-        foreach (explode('.', $keys) as $key) {
+        foreach (explode($this->delimiter, $keys) as $key) {
             if (!isset($items[$key]) || !is_array($items[$key])) {
                 $items[$key] = [];
             }
@@ -388,8 +392,8 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
     /**
      * Return the value of a given key or all the values as JSON
      *
-     * @param  mixed  $key
-     * @param  int    $options
+     * @param  mixed $key
+     * @param  int $options
      * @return string
      */
     public function toJson($key = null, $options = 0)
@@ -435,7 +439,7 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
      * Set a given value to the given key
      *
      * @param int|string|null $key
-     * @param mixed           $value
+     * @param mixed $value
      */
     public function offsetSet($key, $value)
     {
@@ -481,7 +485,7 @@ class Dot implements ArrayAccess, Countable, IteratorAggregate, JsonSerializable
      * --------------------------------------------------------------
      */
 
-     /**
+    /**
      * Get an iterator for the stored items
      *
      * @return \ArrayIterator
